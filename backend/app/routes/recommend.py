@@ -35,6 +35,16 @@ class RecommendInput(BaseModel):
             return int(v)
         return v
 
+    @field_validator("preferences", mode="before", always=True)
+    def _prefs_dict_to_list(cls, v):
+        # Front‑end sometimes sends `{}` or null – coerce to empty list
+        if v in (None, {}):
+            return []
+        # Accept a single string by wrapping it into a list
+        if isinstance(v, str):
+            return [v]
+        return v
+
 
 class Holding(BaseModel):
     ticker:     str
