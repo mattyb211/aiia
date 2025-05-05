@@ -2,7 +2,7 @@
 from typing import List, Optional
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from ..utils.auth import get_current_user
 from ..utils.ai    import get_portfolio
@@ -13,11 +13,27 @@ router = APIRouter(tags=["recommend"])
 
 # ───────────────────────── models ──────────────────────────
 class RecommendInput(BaseModel):
+    """
+    Input model for recommendation with fields:
+    - budget: float
+    - horizon: int
+    - risk: int (can be provided as string digits, coerced to int)
+    - preferences: list of strings
+    - broker: optional string
+    - fund_type: string, default "stocks"
+    """
     budget:      float
     horizon:     int
     risk:        int
     preferences: list[str] = []
     broker:      Optional[str] = None
+    fund_type:   str = "stocks"
+
+    @field_validator("risk", mode="before")
+    def _risk_str_to_int(cls, v):
+        if isinstance(v, str):
+            return int(v)
+        return v
 
 
 class Holding(BaseModel):
@@ -37,13 +53,13 @@ async def recommend_endpoint(
     inp: RecommendInput,
     current_user: dict = Depends(get_current_user),
 ):
-    # ⟪ was: inp.model_dump() ⟫
+    # ⟪ was: inp.model_dump() (including new optional field fund_type) ⟫
     rec = await get_portfolio(inp.dict())
 
     await db.history.insert_one(
         {
             "user_id":      ObjectId(current_user["_id"]),
-            # ⟪ was: inp.model_dump() ⟫
+            # ⟪ was: inp.model_dump() (including new optional field fund_type) ⟫
             "input":        inp.dict(),
             "holdings":     rec["holdings"],
             "generated_at": rec["generated_at"],
