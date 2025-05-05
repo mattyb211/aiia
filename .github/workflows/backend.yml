@@ -2,9 +2,9 @@ name: Backend CI
 
 on:
   push:
-    paths: ["aiia/backend/**", ".github/workflows/backend.yml"]
+    paths: ["backend/**", ".github/workflows/backend.yml"]
   pull_request:
-    paths: ["aiia/backend/**"]
+    paths: ["backend/**"]
 
 jobs:
   test:
@@ -21,18 +21,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd aiia/backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest black isort
 
       - name: Lint (black + isort)
         run: |
-          cd aiia/backend
           black --check .
           isort --check-only .
 
       - name: Run PyTest
         run: |
-          cd aiia/backend
           pytest -q
