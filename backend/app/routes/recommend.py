@@ -35,7 +35,7 @@ class RecommendInput(BaseModel):
             return int(v)
         return v
 
-    @field_validator("preferences", mode="before", always=True)
+    @field_validator("preferences", mode="before")
     def _prefs_dict_to_list(cls, v):
         # Front‑end sometimes sends `{}` or null – coerce to empty list
         if v in (None, {}):
