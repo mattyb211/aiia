@@ -15,8 +15,8 @@ router = APIRouter(tags=["recommend"])
 class RecommendInput(BaseModel):
     budget:      float
     horizon:     int
-    risk:        str
-    preferences: List[str]
+    risk:        int
+    preferences: list[str] = []
     broker:      Optional[str] = None
 
 
