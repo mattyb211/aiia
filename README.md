@@ -129,5 +129,5 @@ npm run dev                              # http://localhost:5173
 
 ---
 
-*Happy investing & hacking!*
+*Happy investing!
 
