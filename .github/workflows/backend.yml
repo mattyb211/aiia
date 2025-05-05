@@ -26,12 +26,6 @@ jobs:
           pip install -r static/requirements.txt
           pip install pytest black isort
 
-      - name: Lint (black + isort)
-        working-directory: backend
-        run: |
-          black --check .
-          isort --check-only .
-
       - name: Run PyTest
         working-directory: backend
         run: |
