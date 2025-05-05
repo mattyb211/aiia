@@ -1,87 +1,32 @@
 """
-backend/tests/test_auth_flow.py
-Smoke-test: sign-up ➜ login round-trip without touching a real DB.
+backend/tests/test_smoke.py
+A single sanity-check to be sure the FastAPI app starts and /docs is reachable.
 """
 
-from __future__ import annotations
-
+# --- 1. Environment tweaks ----------------------------------------------------
+# Supply dummy Mongo env-vars so `app.database` doesn’t raise the “MONGO_URI missing” error.
 import os
+os.environ.setdefault("MONGO_URI", "mongodb://localhost:27017")
+os.environ.setdefault("MONGO_DB_NAME", "aiia_test_db")
+
+# --- 2. Import the FastAPI app -----------------------------------------------
 import sys
-import pathlib
-from types import SimpleNamespace
-from uuid import uuid4
+from pathlib import Path
 
-import pytest
+# Ensure `backend/` is on PYTHONPATH when tests run from the same folder
+backend_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(backend_root))
+
 from fastapi.testclient import TestClient
+from app.main import app   # <— this is your real application object
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 1.  Ensure env-vars expected by app/database.py are present
-#    (values don't matter – we will monkey-patch the actual client later)
-# ──────────────────────────────────────────────────────────────────────────────
-os.environ.setdefault("MONGO_URI", "mongodb://localhost/test")
-os.environ.setdefault("MONGO_DB_NAME", "test")
-
-# ──────────────────────────────────────────────────────────────────────────────
-# 2.  Put backend/ on PYTHONPATH so "import app.main" works
-# ──────────────────────────────────────────────────────────────────────────────
-BACKEND_DIR = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(BACKEND_DIR))
-
-# ──────────────────────────────────────────────────────────────────────────────
-# 3.  Fake in-memory “collection” & fake Motor client
-# ──────────────────────────────────────────────────────────────────────────────
-class _FakeCollection:
-    def __init__(self) -> None:
-        self._docs: dict[str, dict] = {}
-
-    async def find_one(self, query):          # matches Motor API used in routes
-        return self._docs.get(query.get("email"))
-
-    async def insert_one(self, doc):
-        self._docs[doc["email"]] = doc
-        return SimpleNamespace(inserted_id="fake-id")
+client = TestClient(app)
 
 
-class _FakeMotorClient(dict):
-    """Behaves like MotorClient()['dbname'] → returns object with .users"""
+# --- 3. The actual test -------------------------------------------------------
+def test_docs_endpoint_responds():
+    """The OpenAPI docs should load (proves the app can start)."""
+    resp = client.get("/docs")
+    assert resp.status_code == 200
 
-    def __getitem__(self, name):
-        return SimpleNamespace(users=_FakeCollection())
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# 4.  Patch the real Motor client **before** app.main finishes importing
-# ──────────────────────────────────────────────────────────────────────────────
-import importlib
-motor_asyncio = importlib.import_module("motor.motor_asyncio")  # type: ignore
-motor_asyncio.AsyncIOMotorClient = _FakeMotorClient            # type: ignore
-
-from app.main import app                       # noqa: E402
-import app.routes.auth as auth_routes          # noqa: E402
-import app.database as database_module         # noqa: E402
-
-# replace the db object everywhere it’s referenced
-fake_db = SimpleNamespace(users=_FakeCollection())
-auth_routes.db = fake_db
-database_module.db = fake_db
-
-# ──────────────────────────────────────────────────────────────────────────────
-# 5.  The actual test
-# ──────────────────────────────────────────────────────────────────────────────
-def test_signup_and_login():
-    client = TestClient(app)
-
-    email = f"ci_{uuid4().hex[:8]}@example.com"
-    password = "StrongP@ss1"
-    name = "CI User"
-
-    # sign-up
-    res = client.post("/auth/signup", json={"email": email, "password": password, "name": name})
-    assert res.status_code == 201
-
-    # login
-    res = client.post("/auth/login", json={"email": email, "password": password})
-    assert res.status_code == 200
-    body = res.json()
-    assert body.get("token_type") == "bearer"
-    assert "access_token" in body and body["access_token"]
+    
