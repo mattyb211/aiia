@@ -5,7 +5,8 @@ __pycache__/
 
 # Environment file
 backend/.env
-
+# ignore all .env files
+*.env
 
 # Logs
 logs
@@ -32,3 +33,19 @@ dist-ssr
 *.sln
 *.sw?
 
+# ========================
+# ignore Python virtualenvs
+# ========================
+/backend/venv/
+/backend/.venv/
+/frontend/venv/
+/frontend/.venv/
+
+# pycache and compiled Python files
+**/__pycache__/
+*.py[cod]
+
+# macOS Finder
+.DS_Store
+# dotenv
+*.env
